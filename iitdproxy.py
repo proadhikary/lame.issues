@@ -3,12 +3,17 @@ import sys
 import getpass
 import signal
 import time
+import os  # Import os module to set environment variables
 from getpass import getpass
 from datetime import datetime
 import urllib.request, urllib.parse, urllib.error, threading, webbrowser, ssl
 
 class Proxy:
-    proxy_set = {'btech': 22, 'dual': 62, 'diit': 21, 'faculty': 82, 'integrated': 21, 'mtech': 62, 'phd': 61, 'retfaculty': 82, 'staff': 21, 'irdstaff': 21, 'mba': 21, 'mdes': 21, 'msc': 21, 'msr': 21, 'pgdip': 21}
+    proxy_set = {
+        'btech': 22, 'dual': 62, 'diit': 21, 'faculty': 82, 'integrated': 21,
+        'mtech': 62, 'phd': 61, 'retfaculty': 82, 'staff': 21, 'irdstaff': 21,
+        'mba': 21, 'mdes': 21, 'msc': 21, 'msr': 21, 'pgdip': 21
+    }
     google = 'http://www.google.com'
 
     def __init__(self, username, password, proxy_cat):
@@ -51,9 +56,21 @@ class Proxy:
 
     def new_session_id(self):
         self.sessionid = self.get_session_id()
-        self.loginform = {'sessionid': self.sessionid, 'action': 'Validate', 'userid': self.username, 'pass': self.password}
-        self.logout_form = {'sessionid': self.sessionid, 'action': 'logout', 'logout': 'Log out'}
-        self.loggedin_form = {'sessionid': self.sessionid, 'action': 'Refresh'}
+        self.loginform = {
+            'sessionid': self.sessionid,
+            'action': 'Validate',
+            'userid': self.username,
+            'pass': self.password
+        }
+        self.logout_form = {
+            'sessionid': self.sessionid,
+            'action': 'logout',
+            'logout': 'Log out'
+        }
+        self.loggedin_form = {
+            'sessionid': self.sessionid,
+            'action': 'Refresh'
+        }
 
     def login(self):
         self.new_session_id()
@@ -112,7 +129,9 @@ class Proxy:
 
     def submitform(self, form):
         data = urllib.parse.urlencode(form).encode('utf-8')
-        response = self.urlopener.open(urllib.request.Request(self.proxy_page_address, data=data)).read()
+        response = self.urlopener.open(
+            urllib.request.Request(self.proxy_page_address, data=data)
+        ).read()
         return response.decode('utf-8')
 
     def open_page(self, address):
@@ -141,5 +160,11 @@ if __name__ == "__main__":
         login_status = user.login()[STATUS]
         print('\nLogin', login_status)
         if login_status == "Success":
+            proxy_number = Proxy.proxy_set[proxycat]
+            proxy = f'http://proxy{proxy_number}.iitd.ac.in:3128'
+            os.environ['http_proxy'] = proxy 
+            os.environ['HTTP_PROXY'] = proxy
+            os.environ['https_proxy'] = proxy
+            os.environ['HTTPS_PROXY'] = proxy
+            print(f"Environment variables set: http_proxy={proxy}")
             signal.pause()
-
