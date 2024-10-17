@@ -159,12 +159,4 @@ if __name__ == "__main__":
         user = Proxy(username=uname, password=passwd, proxy_cat=proxycat)
         login_status = user.login()[STATUS]
         print('\nLogin', login_status)
-        if login_status == "Success":
-            proxy_number = Proxy.proxy_set[proxycat]
-            proxy = f'http://proxy{proxy_number}.iitd.ac.in:3128'
-            os.environ['http_proxy'] = proxy 
-            os.environ['HTTP_PROXY'] = proxy
-            os.environ['https_proxy'] = proxy
-            os.environ['HTTPS_PROXY'] = proxy
-            print(f"Environment variables set: http_proxy={proxy}")
-            signal.pause()
+        signal.pause()
