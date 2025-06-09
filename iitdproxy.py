@@ -3,7 +3,7 @@ import sys
 import getpass
 import signal
 import time
-import os  # Import os module to set environment variables
+import os
 from getpass import getpass
 from datetime import datetime
 import urllib.request, urllib.parse, urllib.error, threading, webbrowser, ssl
@@ -21,21 +21,29 @@ class Proxy:
         self.password = password
         self.proxy_cat = proxy_cat
         self.auto_proxy = "http://www.cc.iitd.ernet.in/cgi-bin/proxy." + proxy_cat
+
+        # Set proxy host based on category
+        if proxy_cat == 'research':
+            self.proxy_host = 'xen03.iitd.ernet.in'
+        else:
+            self.proxy_host = f'proxy{Proxy.proxy_set[proxy_cat]}.iitd.ernet.in'
+
         self.urlopener = urllib.request.build_opener(
             urllib.request.HTTPSHandler(context=ssl._create_unverified_context()),
-            urllib.request.ProxyHandler({'auto_proxy': self.auto_proxy})
+            urllib.request.ProxyHandler({'http': f'http://{self.proxy_host}:3128'})
         )
-        self.proxy_page_address = 'https://proxy' + str(Proxy.proxy_set[proxy_cat]) + '.iitd.ernet.in/cgi-bin/proxy.cgi'
+
+        self.proxy_page_address = f'https://{self.proxy_host}/cgi-bin/proxy.cgi'
         self.new_session_id()
         self.details()
 
     def is_connected(self):
-        proxies = {'http': 'http://proxy' + str(Proxy.proxy_set[self.proxy_cat]) + '.iitd.ernet.in:3128'}
+        proxies = {'http': f'http://{self.proxy_host}:3128'}
         try:
             proxy_support = urllib.request.ProxyHandler(proxies)
             opener = urllib.request.build_opener(proxy_support)
             response = opener.open(Proxy.google).read().decode('utf-8')
-        except Exception as e:
+        except Exception:
             return "Not Connected"
         if "<title>IIT Delhi Proxy Login</title>" in response:
             return "Login Page"
