@@ -7,6 +7,28 @@ import os
 from getpass import getpass
 from datetime import datetime
 import urllib.request, urllib.parse, urllib.error, threading, webbrowser, ssl
+import random
+
+STATUS = 0
+RESPONSE = 1
+VERBOSE = False
+
+def retry_request(func):
+    """Decorator to retry network calls on timeout/URLError with backoff."""
+    def wrapper(*args, **kwargs):
+        retries = 3
+        delay = 2
+        for attempt in range(retries):
+            try:
+                return func(*args, **kwargs)
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
+                print(f"[WARN] Network error: {e}. Retry {attempt+1}/{retries}...")
+                time.sleep(delay)
+                delay *= 2  # exponential backoff
+        print("[ERROR] Request failed after retries.")
+        return ""  # return empty so caller can handle gracefully
+    return wrapper
+
 
 class Proxy:
     proxy_set = {
@@ -34,6 +56,7 @@ class Proxy:
         )
 
         self.proxy_page_address = f'https://{self.proxy_host}/cgi-bin/proxy.cgi'
+        self.loggedout = True
         self.new_session_id()
         self.details()
 
@@ -42,7 +65,7 @@ class Proxy:
         try:
             proxy_support = urllib.request.ProxyHandler(proxies)
             opener = urllib.request.build_opener(proxy_support)
-            response = opener.open(Proxy.google).read().decode('utf-8')
+            response = opener.open(Proxy.google, timeout=10).read().decode('utf-8')
         except Exception:
             return "Not Connected"
         if "<title>IIT Delhi Proxy Login</title>" in response:
@@ -55,7 +78,7 @@ class Proxy:
     def get_session_id(self):
         try:
             response = self.open_page(self.proxy_page_address)
-        except Exception as e:
+        except Exception:
             return None
         check_token = 'sessionid" type="hidden" value="'
         token_index = response.index(check_token) + len(check_token)
@@ -88,8 +111,12 @@ class Proxy:
         elif "You are logged in successfully as " + self.username in response:
             def ref():
                 if not self.loggedout:
-                    res, _ = self.refresh()
-                    print("Refresh", datetime.now())
+                    try:
+                        res, _ = self.refresh()
+                    except Exception as e:
+                        print("[ERROR] Refresh failed:", e)
+                        res = "Not Connected"
+                    print("Refresh", datetime.now(), "Status:", res)
                     if res == 'Session Expired':
                         print("Session Expired. Please run the script again.")
                     else:
@@ -135,26 +162,27 @@ class Proxy:
             for property, value in vars(self).items():
                 print(property, ": ", value)
 
+    @retry_request
     def submitform(self, form):
         data = urllib.parse.urlencode(form).encode('utf-8')
         response = self.urlopener.open(
-            urllib.request.Request(self.proxy_page_address, data=data)
+            urllib.request.Request(self.proxy_page_address, data=data),
+            timeout=10
         ).read()
         return response.decode('utf-8')
 
+    @retry_request
     def open_page(self, address):
-        response = self.urlopener.open(address).read()
+        response = self.urlopener.open(address, timeout=10).read()
         return response.decode('utf-8')
 
-STATUS = 0
-RESPONSE = 1
-VERBOSE = False
 
 def signal_handler(signal_number, frame):
     print('\nLogout', user.logout()[STATUS])
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
+
 
 if __name__ == "__main__":
     n = len(sys.argv)
